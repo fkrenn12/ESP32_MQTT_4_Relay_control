@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <MQTT.h>
 #include <WiFiClientSecure.h>
+#include <config.h>
 
 #define NTP_SERVER "de.pool.ntp.org"
 #define TZ_INFO "WEST-1DWEST-2,M3.5.0/02:00:00,M10.5.0/03:00:00" // Western European Time
@@ -15,13 +16,7 @@ class ConnectingTask
     private:
         uint32_t            _wifi_status;
         uint32_t            _mqtt_status;
-        String              _wifi_ssid;
-        String              _wifi_passwd;
-        String              _mqtt_hostname;
-        uint32_t            _mqtt_port;
-        String              _mqtt_user;
-        String              _mqtt_passwd;
-        bool                _mqtt_use_tls;
+       
         IPAddress           _mqtt_host_ip;
         MQTTClient*         _client;
         WiFiClient*         _net_unsec;
@@ -32,6 +27,13 @@ class ConnectingTask
        
 
     public: 
+        String     _wifi_ssid;
+        String     _wifi_passwd;
+        String     _mqtt_hostname;
+        uint32_t   _mqtt_port;
+        String     _mqtt_user;
+        String     _mqtt_passwd;
+        bool       _mqtt_use_tls;
         bool        fire_loop;
         bool        wifi_is_connected;
         bool        mqtt_is_connected;
@@ -198,18 +200,20 @@ class ConnectingTask
         }
         // constructor
         ConnectingTask(MQTTClient*  client,
+                        /*
                        String&      wifi_ssid, 
                        String&      wifi_passwd, 
                        String&      mqtt_hostname,
                        uint32_t&    mqtt_port,
                        String&      mqtt_user,
                        String&      mqtt_passwd,
-                       bool         mqtt_use_tls,
+                       bool         mqtt_use_tls,*/
                        WiFiClient*       net_unsec,
                        WiFiClientSecure* net_secure)
         {
             _wifi_status    = 0;
             _mqtt_status    = 0;
+            /*
             _wifi_ssid      = wifi_ssid;
             _wifi_passwd    = wifi_passwd;
             _mqtt_hostname  = mqtt_hostname;
@@ -217,6 +221,7 @@ class ConnectingTask
             _mqtt_user      = mqtt_user;
             _mqtt_passwd    = mqtt_passwd;
             _mqtt_use_tls   = mqtt_use_tls;
+            */
             _client         = client;
             _net_secure     = net_secure;
             _net_unsec      = net_unsec;
@@ -238,14 +243,15 @@ class WifiMQTT
     MQTTClient*             _client;
     
    public:
-    WifiMQTT(   MQTTClient* client, 
+    WifiMQTT(   /*MQTTClient* client, 
+    
                 String     wifi_ssid, 
                 String     wifi_passwd, 
                 String     mqtt_hostname, 
                 uint32_t   mqtt_port,
                 String     mqtt_user,
                 String     mqtt_passwd,
-                bool       mqtt_use_tls); // constructor
+                bool       mqtt_use_tls */); // constructor
 
     bool wifi_is_connected();
     bool mqtt_is_connected(); 
@@ -254,8 +260,10 @@ class WifiMQTT
     void stop();
     void set_onConnected(void (*funcptr)(void));  
     void set_onDisconnected(void (*funcptr)(void)); 
+    void set_config(Config& config);
     void loop(void);  
     bool publish(String& topic, String& payload, bool retain, int qos, unsigned int timeout_ms);
+    bool subscribe(String& topic, int qos, unsigned int timeout_ms );
 };
 // -------------------------------------------------------------
 #endif
