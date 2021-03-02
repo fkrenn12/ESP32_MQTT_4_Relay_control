@@ -27,45 +27,14 @@
 #define NTP_SERVER "de.pool.ntp.org"
 #define TZ_INFO "WEST-1DWEST-2,M3.5.0/02:00:00,M10.5.0/03:00:00" // Western European Time
 // -------------------------------------------------------------------------------------------
-
+Config config;
 Adafruit_NeoPixel leds(pixel_count, led_data_pin, NEO_GRB + NEO_KHZ800); // verified settings
 LED_Matrix display(rows_count, cols_count, leds);
 MQTTNode node("maqlab", MANUFACTORER, MODELNAME, DEVICETYPE, VERSION);
 
-// definition of eeprom address
-#define eeprom_addr_state         0
-#define eeprom_addr_mqtt_server   eeprom_addr_state       + 4
-#define eeprom_addr_mqtt_port     eeprom_addr_mqtt_server + 32
-#define eeprom_addr_mqtt_user     eeprom_addr_mqtt_port   + 15
-#define eeprom_addr_mqtt_pass     eeprom_addr_mqtt_user   + 32
-#define eeprom_addr_chipid        eeprom_addr_mqtt_pass   + 32
-#define eeprom_addr_WiFi_SSID     eeprom_addr_chipid      + 32
-#define eeprom_addr_WiFi_pass     eeprom_addr_WiFi_SSID   + 32
-#define eeprom_addr_mqtt_root     eeprom_addr_WiFi_pass   + 32
-//#define eeprom_addr_mqtt_tls      eeprom_addr_mqtt_root   + 32
-
 #define led_green arduino_pin2
 #define led_red   arduino_pin3
 #define digital_input arduino_pin12
-
-// -----------------------------------------
-//            global variables
-// -----------------------------------------
-// default values
-char szt_mqtt_hostname[32]  = "mqtt-host";
-char szt_mqtt_ip[32]        = "0.0.0.0";
-char szt_mqtt_port[15]      = "mqtt-port";
-char szt_mqtt_user[32]      = "mqtt-username";
-char szt_mqtt_pass[32]      = "mqtt-password";
-char szt_mqtt_root[32]      = "mqtt-root";
-
-String wifi_ssid            = "";
-String wifi_password        = "";
-String mqtt_hostname        = ""; 
-String mqtt_port            = "";
-String mqtt_user            = ""; 
-String mqtt_password        = ""; 
-String mqtt_root            = "";
 
 // String deviceNameFull;
 // String topic_root = mqtt_root + "/";  
@@ -130,11 +99,15 @@ void setup()
     
     Serial.begin(BAUDRATE,SERIAL_8N1);
     Serial.println("\n*** STARTUP after RESET ***");
+    Serial.println("CHIPID: " + config.chipid);
     Serial.println("CPU-Core # " + String(xTaskGetAffinity(NULL)));
     chipid=ESP.getEfuseMac(); //The chip ID is essentially its MAC address(length: 6 bytes).
     sprintf(chipid_str,"%04X%08X",(uint16_t)(chipid>>32),(uint32_t)chipid);
     Serial.println("MAX HEAPSIZE: " + String(ESP.getMaxAllocHeap()));
-    if (!InitalizeFileSystem(true)) ESP.restart();
+    if (!config.initialize()) ESP.restart();  // without file system nothing works
+    if (!config.exist()) config.create();
+    
+    
     display.begin();
     bool needConfigPortal = false;
     pinMode(digital_input,INPUT_PULLUP);
@@ -154,6 +127,8 @@ void setup()
     digitalWrite(led_red, 0);
     digitalWrite(led_green, 0);
    
+
+    /*
     // reading the config from eeprom
     EEPROM.begin(255);
     if (EEPROM.readByte(eeprom_addr_WiFi_SSID) == 0xaa) 
@@ -177,7 +152,10 @@ void setup()
       mqtt_user.toCharArray(szt_mqtt_user,30);
     if (EEPROM.readByte(eeprom_addr_mqtt_root) == 0xaa) 
       mqtt_user.toCharArray(szt_mqtt_root,30);
-  
+    */
+
+    
+    /*
     Serial.print("MQTT-HOST: ");
     Serial.println(szt_mqtt_hostname);
     Serial.print("MQTT-PORT: ");
@@ -188,6 +166,17 @@ void setup()
     Serial.println(szt_mqtt_pass);
     Serial.print("MQTT-ROOT: ");
     Serial.println(szt_mqtt_root);
+    */
+    config.load(config);
+    config.printout(config);
+
+    if (needConfigPortal) 
+    {
+      config.portal(config,node.get_accessnumber());
+      config.store(config);
+    }
+    config.load(config);
+    config.printout(config);
 
     mqtt_connection.start();
     mqtt.onMessage(messageReceived);
