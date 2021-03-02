@@ -71,7 +71,8 @@ void mqtt_connected()
 //-------------------------------------------------------------------
 {
     Serial.println("CONNECTED :-) ");
-    mqtt_connection.subscribe("maqlab/#",0,500);
+    String topic = "maqlab/#";
+    mqtt_connection.subscribe(topic,0,500);
     Serial.println("Subscribed ");
     //node.subscribe(mqtt);
 }
@@ -97,8 +98,8 @@ void setup()
 //--------------------------------------------
 {   
     // delay(2000);
-    mqtt_connection.set_onConnected(mqtt_connected);
-    mqtt_connection.set_onDisconnected(mqtt_disconnected);  
+    mqtt_connection.onConnected(mqtt_connected);
+    mqtt_connection.onDisconnected(mqtt_disconnected);  
     
     Serial.begin(BAUDRATE,SERIAL_8N1);
     Serial.println("\n*** STARTUP after RESET ***");
@@ -142,8 +143,9 @@ void setup()
     config.load(config);
     config.printout(config);
 
+    mqtt_connection.onMessage(messageReceived);
     mqtt_connection.start();
-    mqtt.onMessage(messageReceived);
+    
 
     // node.set_root(mqtt_root);
     // node.set_commandlist("[\"setpixel_rgb\",\"setpixel_hsv\"]");
@@ -168,10 +170,13 @@ void loop()
   {
     old_millis = millis();
     if (mqtt_connection.mqtt_is_connected())
-    {
-      mqtt.publish("maqlab/ruby/test","ok");
-      mqtt.publish("maqlab/ruby/test1","ok1");
-      mqtt.publish("maqlab/ruby/test2","ok2");
+    { 
+      String topic = "maqlab/ruby/test";
+      String payload = "ok";
+      mqtt_connection.publish(topic,payload,false,0,100);
+      //mqtt_connection.publish("maqlab/ruby/test","ok",false,0,100);
+      //mqtt_connection.publish("maqlab/ruby/test1","ok1",false,0,100);
+      //mqtt_connection.publish("maqlab/ruby/test2","ok2",false,0,100);
     }
   }
 }

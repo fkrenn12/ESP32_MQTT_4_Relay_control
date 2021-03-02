@@ -49,14 +49,19 @@ bool WifiMQTT::mqtt_is_connected(void)
     return (task->mqtt_is_connected);
 }
 // -----------------------------------------------------------------------------
-void WifiMQTT::set_onConnected(void (*funcptr)(void)) 
+void WifiMQTT::onConnected(void (*funcptr)(void)) 
 {
     task->onConnectptr = funcptr;
 }
 // -----------------------------------------------------------------------------
-void WifiMQTT::set_onDisconnected(void (*funcptr)(void)) 
+void WifiMQTT::onDisconnected(void (*funcptr)(void)) 
 {
     task->onDisconnectptr = funcptr;
+}
+// -----------------------------------------------------------------------------
+void WifiMQTT::onMessage(void (*funcptr)(String&,String&))
+{
+    _client->onMessage(funcptr);
 }
 // -----------------------------------------------------------------------------
 void WifiMQTT::set_config(Config& config) 
@@ -105,12 +110,13 @@ bool WifiMQTT::subscribe(String& topic, int qos, unsigned int timeout_ms )
             _client->subscribe(topic,qos);
             return (true);
         }
-        vTaskSwitchContext();
+        vTaskDelay(1/portTICK_PERIOD_MS);
     } 
 }
 // -----------------------------------------------------------------------------
 bool WifiMQTT::publish(String& topic, String& payload, bool retain, int qos, unsigned int timeout_ms) 
 {
+    
     unsigned int start_millis = millis();
     unsigned int timeout = 50;
 
@@ -128,6 +134,14 @@ bool WifiMQTT::publish(String& topic, String& payload, bool retain, int qos, uns
             _client->publish(topic,payload,retain,qos);
             return (true);
         }
-        vTaskSwitchContext();
+        vTaskDelay(1/portTICK_PERIOD_MS);
     }
+}
+
+// -----------------------------------------------------------------------------
+bool WifiMQTT::publish(const char* topic, const char* payload, bool retain, int qos, unsigned int timeout_ms) 
+{
+    String _topic = topic;
+    String _payload = payload;
+    return (publish(_topic,_payload,retain,qos,timeout_ms));
 }

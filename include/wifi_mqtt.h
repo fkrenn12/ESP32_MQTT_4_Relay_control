@@ -258,11 +258,13 @@ class WifiMQTT
     bool mqtt_is_secure();   
     void start();
     void stop();
-    void set_onConnected(void (*funcptr)(void));  
-    void set_onDisconnected(void (*funcptr)(void)); 
+    void onConnected(void (*funcptr)(void));  
+    void onDisconnected(void (*funcptr)(void)); 
+    void onMessage(void (*funcptr)(String&,String&));
     void set_config(Config& config);
     void loop(void);  
     bool publish(String& topic, String& payload, bool retain, int qos, unsigned int timeout_ms);
+    bool publish(const char* topic, const char*  payload, bool retain, int qos, unsigned int timeout_ms);
     bool subscribe(String& topic, int qos, unsigned int timeout_ms );
 };
 // -------------------------------------------------------------
