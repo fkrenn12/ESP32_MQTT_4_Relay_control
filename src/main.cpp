@@ -14,8 +14,7 @@
 
 #define FORCE_CONFIG_PORTAL   0
 #define BAUDRATE              9600
-#define TLS_PORT_RANGE_START  8000
-#define TLS_PORT_RANGE_END    8999      
+   
 
 #define led_wifi                arduino_pin2
 #define led_mqtt                arduino_pin3
@@ -88,38 +87,38 @@ void setup()
     Serial.println("Devicename: " + node.get_devicefullname());
     Serial.println("Acessnumber: " + String(node.get_accessnumber()));
 
+    // init filesystem and config file
     if (!config.initialize()) ESP.restart();  // without the file system nothing will work
     if (!config.exist())    config.create();  // create initial configuration file
     if (!config.exist())      ESP.restart();  // without config file nothing will work too
        
+    // reading the input pin to force the wifi portal
     bool needConfigPortal= !(bool)digitalRead(force_config_portal_pin);
     while(!(bool)digitalRead(force_config_portal_pin))
     {
-      Serial.println("Remove Wire");
-      delay(100);
+      Serial.println("Remove jumper!");
+      delay(1000);
     };
   
-    config.load(config);
-    config.printout(config);
-
+    // start portal if pin was low and load configuration 
     if (needConfigPortal) 
     {
       config.portal(config,node.get_accessnumber());
+      config.printout(config);
       config.store(config);
     }
     config.load(config);
-    config.printout(config);
+
     // MQTT Broker connection start
+    mqtt.config(config);
     mqtt.onConnected(mqtt_connected);
     mqtt.onDisconnected(mqtt_disconnected);  
-    mqtt.config(config);
     mqtt.onMessage(mqtt_message);
     mqtt.start();
     
+    // node configuration
     node.set_root(config.mqtt_root);
-    node.set_commandlist("[]");
-
-    
+    node.set_commandlist("[]");   
 }
 
 //--------------------------------------------
@@ -132,9 +131,10 @@ void loop()
   {
     old_millis = millis();
     { 
-      mqtt.publish("maqlab/ruby/test","ok",false,0,100);
-      mqtt.publish("maqlab/ruby/test1","ok1",false,0,100);
-      mqtt.publish("maqlab/ruby/test2","ok2",false,0,100);
+      String topic = NODE_ROOT;
+      topic.concat("/1/1/cmd/test");
+      String payload = "0123456789";  
+      mqtt.publish(topic,payload,false,0,100);
     }
   }
 }

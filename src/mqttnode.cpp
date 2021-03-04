@@ -7,9 +7,10 @@ MQTTNode::MQTTNode(WifiMQTT* mqtt,const char* root, const char* manufactorer, co
 {
     uint64_t chipid = ESP.getEfuseMac(); //The chip ID is essentially its MAC address(length: 6 bytes).
     _mqtt = mqtt;
-    _accessnumber = (uint16_t)(chipid>>32);
-    _accessnumber %= 1000;
-    _accessnumber += 8000;
+    // _accessnumber = (uint16_t)(chipid>>32);
+    _accessnumber = (uint32_t)(chipid);
+    _accessnumber %= 100000;
+    _accessnumber += 800000;
     _manufactorer = manufactorer;
     _model = model;
     _devicetype = devicetype;

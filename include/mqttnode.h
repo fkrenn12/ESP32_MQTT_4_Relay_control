@@ -8,7 +8,7 @@
 class MQTTNode
 {
    private:
-        int _accessnumber;
+        uint32_t _accessnumber;
         String _manufactorer, _model, _devicetype;
         String _devicefullname, _root;
         String _commandlist;

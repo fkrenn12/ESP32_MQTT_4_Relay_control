@@ -14,8 +14,10 @@ Config::Config(void)
   mqtt_user       = "user";
   mqtt_password   = "pass";
   mqtt_root       = "user";
-  auto_tls        = true;
-  tls             = false;
+  auto_tls        = true;  // using port range to detect using TLS or not 
+                           // see #define TLS_PORT_RANGE_START and TLS_PORT_RANGE_STOP
+                           // in wifi_mqtt.h
+  tls             = false; // only used if auto_tls = false 
   u64_chipid=ESP.getEfuseMac(); //The chip ID is essentially its MAC address(length: 6 bytes).
   sprintf(chipid_str,"%04X%08X",(uint16_t)(u64_chipid>>32),(uint32_t)u64_chipid);
   chipid = String(chipid_str);
