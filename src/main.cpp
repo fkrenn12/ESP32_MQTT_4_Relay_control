@@ -51,7 +51,7 @@ WiFiClientSecure      net_secure;
 //MQTTClient          mqtt(8096); // besser ausrechnen !!
 //WifiMQTT            mqtt_connection(&mqtt,"LAWIG14","wiesengrund14","techfit.at",8883,"maqlab","maqlab",true);
 //WifiMQTT            mqtt_connection(&mqtt);
-WifiMQTT              mqtt_connection;
+WifiMQTT              mqtt;
 
 
 // prototypes
@@ -72,7 +72,7 @@ void mqtt_connected()
 {
     Serial.println("CONNECTED :-) ");
     String topic = "maqlab/#";
-    mqtt_connection.subscribe(topic,0,500);
+    mqtt.subscribe(topic,0,500);
     Serial.println("Subscribed ");
     //node.subscribe(mqtt);
 }
@@ -98,11 +98,11 @@ void setup()
 //--------------------------------------------
 {   
     // delay(2000);
-    mqtt_connection.onConnected(mqtt_connected);
-    mqtt_connection.onDisconnected(mqtt_disconnected);  
-    
     Serial.begin(BAUDRATE,SERIAL_8N1);
     Serial.println("\n*** STARTUP after RESET ***");
+    mqtt.onConnected(mqtt_connected);
+    mqtt.onDisconnected(mqtt_disconnected);  
+
     Serial.println("CHIPID: " + config.chipid);
     Serial.println("CPU-Core # " + String(xTaskGetAffinity(NULL)));
     chipid=ESP.getEfuseMac(); //The chip ID is essentially its MAC address(length: 6 bytes).
@@ -133,7 +133,6 @@ void setup()
  
     config.load(config);
     config.printout(config);
-    mqtt_connection.set_config(config);
 
     if (needConfigPortal) 
     {
@@ -142,9 +141,9 @@ void setup()
     }
     config.load(config);
     config.printout(config);
-
-    mqtt_connection.onMessage(messageReceived);
-    mqtt_connection.start();
+    mqtt.set_config(config);
+    mqtt.onMessage(messageReceived);
+    mqtt.start();
     
 
     // node.set_root(mqtt_root);
@@ -159,21 +158,21 @@ void loop()
 {     
   static uint32_t old_millis = millis();
   
-  mqtt_connection.loop();
-  vTaskDelay(30/portTICK_PERIOD_MS);
-  if (!mqtt_connection.mqtt_is_connected())
+  // mqtt.loop();
+  vTaskDelay(200/portTICK_PERIOD_MS);
+  /*
+  if (!mqtt.mqtt_is_connected())
   {
     old_millis = millis();
     vTaskDelay(30/portTICK_PERIOD_MS);
   }
-  if (millis() - old_millis > 100)
+  */
+  //if (millis() - old_millis > 200)
   {
     old_millis = millis();
-    if (mqtt_connection.mqtt_is_connected())
+    //if (mqtt.mqtt_is_connected())
     { 
-      String topic = "maqlab/ruby/test";
-      String payload = "ok";
-      mqtt_connection.publish(topic,payload,false,0,100);
+      mqtt.publish("maqlab/ruby/test","ok",false,0,200);
       //mqtt_connection.publish("maqlab/ruby/test","ok",false,0,100);
       //mqtt_connection.publish("maqlab/ruby/test1","ok1",false,0,100);
       //mqtt_connection.publish("maqlab/ruby/test2","ok2",false,0,100);

@@ -41,6 +41,7 @@ class ConnectingTask
         void        (*onConnectptr)(void);
         void        (*onDisconnectptr)(void);
         unsigned long   last_loop_millis;
+        SemaphoreHandle_t xMutex;
 
         static void run( void* pvParams )
         {
@@ -170,32 +171,33 @@ class ConnectingTask
                     case 4: // --------------------------------------
                             // Check connection to broker continously
                             // --------------------------------------
-                            if (fire_loop)
-                            {      
-                                last_loop_millis = millis(); 
-                                if (!_client->connected())
+                            //if (fire_loop)
+                            if (true)
+                            { 
+                                if (xSemaphoreTake(xMutex,100/portTICK_PERIOD_MS))
                                 {
-                                    _mqtt_status = 0;
-                                    mqtt_is_connected = false;
-                                    if (onDisconnectptr != NULL)
-                                        (*onDisconnectptr)();
+                                    if (!_client->connected())
+                                    {
+                                        _mqtt_status = 0;
+                                        mqtt_is_connected = false;
+                                        if (onDisconnectptr != NULL)
+                                            (*onDisconnectptr)();
+                                    }
+                                    else
+                                    {
+                                        _client->loop(); 
+                                        last_loop_millis = millis(); 
+                                    }
+                                    fire_loop = false;
+                                    vTaskDelay(10/portTICK_PERIOD_MS);
+                                    xSemaphoreGive(xMutex);
                                 }
-                                else
-                                {
-                                    // vTaskDelay(10/portTICK_PERIOD_MS);
-                                    _client->loop();
-                                    // vTaskDelay(10/portTICK_PERIOD_MS);
-                                }
-                                fire_loop = false;
                                 break;
                             }
-                            vTaskDelay(10/portTICK_PERIOD_MS);
                             break; 
                     default: break;
-                  
-                    
                 }
-                
+                vTaskDelay(10/portTICK_PERIOD_MS);
             }
         }
         // constructor
@@ -229,6 +231,7 @@ class ConnectingTask
             _mqtt_connction_id = "ESP" + String((uint16_t)(random(0,1000))) + String((uint16_t)(ESP.getEfuseMac()>>32));
             onConnectptr    = NULL;
             onDisconnectptr = NULL;
+            xMutex = xSemaphoreCreateMutex();
         }
 };
 
@@ -266,6 +269,7 @@ class WifiMQTT
     bool publish(String& topic, String& payload, bool retain, int qos, unsigned int timeout_ms);
     bool publish(const char* topic, const char*  payload, bool retain, int qos, unsigned int timeout_ms);
     bool subscribe(String& topic, int qos, unsigned int timeout_ms );
+    bool subscribe(const char* topic, int qos, unsigned int timeout_ms );
 };
 // -------------------------------------------------------------
 #endif

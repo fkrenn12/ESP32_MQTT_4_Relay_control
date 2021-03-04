@@ -105,13 +105,22 @@ bool WifiMQTT::subscribe(String& topic, int qos, unsigned int timeout_ms )
         if (millis() - start_millis > timeout)
             return (false);
 
-        if (millis() - task->last_loop_millis  > 50)
+        //if (millis() - task->last_loop_millis  > 25)
+        if (xSemaphoreTake(task->xMutex,100/portTICK_PERIOD_MS))
         {
             _client->subscribe(topic,qos);
+            vTaskDelay(10/portTICK_PERIOD_MS);
+            xSemaphoreGive(task->xMutex);
             return (true);
         }
         vTaskDelay(1/portTICK_PERIOD_MS);
     } 
+}
+// -----------------------------------------------------------------------------
+bool WifiMQTT::subscribe(const char* topic, int qos, unsigned int timeout_ms )
+{
+    String _topic = topic;
+    return (subscribe(_topic,qos,timeout_ms));
 }
 // -----------------------------------------------------------------------------
 bool WifiMQTT::publish(String& topic, String& payload, bool retain, int qos, unsigned int timeout_ms) 
@@ -129,10 +138,22 @@ bool WifiMQTT::publish(String& topic, String& payload, bool retain, int qos, uns
         if (millis() - start_millis > timeout)
             return (false);
 
-        if (millis() - task->last_loop_millis  > 50)
+        // Serial.println(String (millis()));
+        // Serial.println(String (task->last_loop_millis));
+        // Serial.println(String ((millis() - task->last_loop_millis)));
+        // if (millis() - task->last_loop_millis  > 50)
+        if (xSemaphoreTake(task->xMutex,100/portTICK_PERIOD_MS))
         {
-            _client->publish(topic,payload,retain,qos);
-            return (true);
+            if (_client->connected())
+            {
+                Serial.println("PUBLISH");
+                _client->publish(topic,payload,retain,qos);
+                vTaskDelay(10/portTICK_PERIOD_MS);
+                xSemaphoreGive(task->xMutex);
+                return (true);
+            }
+            xSemaphoreGive(task->xMutex);
+            return(false);
         }
         vTaskDelay(1/portTICK_PERIOD_MS);
     }
