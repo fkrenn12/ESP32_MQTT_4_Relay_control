@@ -16,14 +16,14 @@ class ConnectingTask
     private:
         uint32_t            _wifi_status;
         uint32_t            _mqtt_status;
-       
-        IPAddress           _mqtt_host_ip;
         MQTTClient*         _client;
+        IPAddress           _mqtt_host_ip;   
         WiFiClient*         _net_unsec;
         WiFiClientSecure*   _net_secure;
         String              _mqtt_connction_id;
         void                _mqtt_loop(void);
     public: 
+        
         String              _wifi_ssid;
         String              _wifi_passwd;
         String              _mqtt_hostname;
@@ -218,10 +218,11 @@ class WifiMQTT
     ConnectingTask*         task;
     WiFiClient              net_unsec;
     WiFiClientSecure        net_secure;
-    MQTTClient*             _client;
+    
     
    public:
     WifiMQTT(); // constructor
+    MQTTClient*  client;
     bool wifi_is_connected();
     bool mqtt_is_connected(); 
     bool mqtt_is_secure();   
@@ -230,7 +231,7 @@ class WifiMQTT
     void onConnected(void (*funcptr)(void));  
     void onDisconnected(void (*funcptr)(void)); 
     void onMessage(void (*funcptr)(String&,String&));
-    void set_config(Config& config);  
+    void config(Config& config);  
     bool publish(String& topic, String& payload, bool retain, int qos, unsigned int timeout_ms);
     bool publish(const char* topic, const char*  payload, bool retain, int qos, unsigned int timeout_ms);
     bool subscribe(String& topic, int qos, unsigned int timeout_ms );

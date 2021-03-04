@@ -13,9 +13,9 @@ void ConnectingTask::_mqtt_loop(void)
 WifiMQTT::WifiMQTT() // constructor 
 // -----------------------------------------------------------------------------
 {
-    _client = new MQTTClient(8096); // besser ausrechnen !!
+    client = new MQTTClient(8096); // besser ausrechnen !!
     
-    task = new ConnectingTask(  _client,
+    task = new ConnectingTask(  client,
                                 &net_unsec,
                                 &net_secure);
                                     
@@ -51,10 +51,10 @@ void WifiMQTT::onDisconnected(void (*funcptr)(void))
 // -----------------------------------------------------------------------------
 void WifiMQTT::onMessage(void (*funcptr)(String&,String&))
 {
-    _client->onMessage(funcptr);
+    client->onMessage(funcptr);
 }
 // -----------------------------------------------------------------------------
-void WifiMQTT::set_config(Config& config) 
+void WifiMQTT::config(Config& config) 
 {
     task->_wifi_ssid        = config.wifi_ssid;
     task->_wifi_passwd      = config.wifi_pass;
@@ -91,7 +91,7 @@ bool WifiMQTT::subscribe(String& topic, int qos, unsigned int timeout_ms )
         if (xSemaphoreTake(task->xMutex,timeout_ms/portTICK_PERIOD_MS))
         {
             bool connected = task->mqtt_is_connected;  
-            if (connected) { _client->subscribe(topic,qos); }
+            if (connected) { client->subscribe(topic,qos); }
             vTaskDelay(10/portTICK_PERIOD_MS);
             xSemaphoreGive(task->xMutex);
             if (connected) return (true);
@@ -125,7 +125,7 @@ bool WifiMQTT::publish(String& topic, String& payload, bool retain, int qos, uns
             if (connected)
             {
                 // Serial.println("PUBLISH");
-                _client->publish(topic,payload,retain,qos);
+                client->publish(topic,payload,retain,qos);
             }
             vTaskDelay(10/portTICK_PERIOD_MS);
             xSemaphoreGive(task->xMutex);
