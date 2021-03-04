@@ -46,19 +46,13 @@ boolean needReconnect = false;
 uint64_t chipid;
 char chipid_str[13];    // 6 Bytes = 12 Chars + \0x00 = 13 Chars
 
-WiFiClient            net_unsec;
-WiFiClientSecure      net_secure;
-//MQTTClient          mqtt(8096); // besser ausrechnen !!
-//WifiMQTT            mqtt_connection(&mqtt,"LAWIG14","wiesengrund14","techfit.at",8883,"maqlab","maqlab",true);
-//WifiMQTT            mqtt_connection(&mqtt);
 WifiMQTT              mqtt;
 
 
 // prototypes
-void messageReceived(String &topic, String &payload);
-bool connecting_to_Wifi_and_broker();
-void configModeCallback (WiFiManager *myWiFiManager);
-void saveConfigCallback (void);
+void mqtt_message(String &topic, String &payload);
+void mqtt_disconnected(void);
+void mqtt_connected(void);
 
 //-------------------------------------------------------------------
 void mqtt_disconnected()
@@ -97,11 +91,11 @@ void messageReceived(String &topic, String &payload)
 void setup() 
 //--------------------------------------------
 {   
-    // delay(2000);
     Serial.begin(BAUDRATE,SERIAL_8N1);
+    Serial.setDebugOutput(true);
+    Serial.setDebugOutput(false);
     Serial.println("\n*** STARTUP after RESET ***");
-    mqtt.onConnected(mqtt_connected);
-    mqtt.onDisconnected(mqtt_disconnected);  
+
 
     Serial.println("CHIPID: " + config.chipid);
     Serial.println("CPU-Core # " + String(xTaskGetAffinity(NULL)));
@@ -141,8 +135,11 @@ void setup()
     }
     config.load(config);
     config.printout(config);
+    // MQTT Broker connection start
+    mqtt.onConnected(mqtt_connected);
+    mqtt.onDisconnected(mqtt_disconnected);  
     mqtt.set_config(config);
-    mqtt.onMessage(messageReceived);
+    mqtt.onMessage(mqtt_message);
     mqtt.start();
     
 
@@ -158,40 +155,14 @@ void loop()
 {     
   static uint32_t old_millis = millis();
   
-  // mqtt.loop();
-  vTaskDelay(200/portTICK_PERIOD_MS);
-  /*
-  if (!mqtt.mqtt_is_connected())
+  if (millis() - old_millis > 200)
   {
     old_millis = millis();
-    vTaskDelay(30/portTICK_PERIOD_MS);
-  }
-  */
-  //if (millis() - old_millis > 200)
-  {
-    old_millis = millis();
-    //if (mqtt.mqtt_is_connected())
     { 
-      mqtt.publish("maqlab/ruby/test","ok",false,0,200);
-      //mqtt_connection.publish("maqlab/ruby/test","ok",false,0,100);
-      //mqtt_connection.publish("maqlab/ruby/test1","ok1",false,0,100);
-      //mqtt_connection.publish("maqlab/ruby/test2","ok2",false,0,100);
+      mqtt.publish("maqlab/ruby/test","ok",false,0,100);
+      mqtt.publish("maqlab/ruby/test1","ok1",false,0,100);
+      mqtt.publish("maqlab/ruby/test2","ok2",false,0,100);
     }
   }
 }
-//callbacks
-//-------------------------------------------------------------------
-void configModeCallback (WiFiManager *myWiFiManager) 
-//-------------------------------------------------------------------
-{  
-  Serial.println("Entered config mode");
-  Serial.println(WiFi.softAPIP()); 
-  Serial.println(myWiFiManager->getConfigPortalSSID()); 
-}
-//-------------------------------------------------------------------
-void saveConfigCallback () 
-//-------------------------------------------------------------------
-{
-  Serial.println("Should save config");
-  Serial.println(WiFi.softAPIP());
-}
+

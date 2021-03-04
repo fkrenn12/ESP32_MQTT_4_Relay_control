@@ -1,31 +1,21 @@
 #include <wifi_mqtt.h>
-
-
+// -----------------------------------------------------------
+void ConnectingTask::_mqtt_loop(void)
+{
+    if (xSemaphoreTake(xMutex,100/portTICK_PERIOD_MS))
+    {
+        _client->loop();
+        vTaskDelay(10/portTICK_PERIOD_MS);
+    }
+    xSemaphoreGive(xMutex); 
+}
 // -----------------------------------------------------------------------------
-WifiMQTT::WifiMQTT( /*MQTTClient* client ,
-                    String      wifi_ssid, 
-                    String      wifi_passwd, 
-                    String      mqtt_hostname, 
-                    uint32_t    mqtt_port,
-                    String      mqtt_user,
-                    String      mqtt_passwd,
-                    bool        mqtt_use_tls */) // constructor 
+WifiMQTT::WifiMQTT() // constructor 
 // -----------------------------------------------------------------------------
 {
-    // ConnectingTask*
-    // _client = client;
     _client = new MQTTClient(8096); // besser ausrechnen !!
     
     task = new ConnectingTask(  _client,
-    /*
-                                wifi_ssid,                          
-                                wifi_passwd, 
-                                mqtt_hostname, 
-                                mqtt_port,
-                                mqtt_user,
-                                mqtt_passwd,
-                                mqtt_use_tls,
-                                */
                                 &net_unsec,
                                 &net_secure);
                                     
@@ -86,35 +76,28 @@ void WifiMQTT::stop(void)
    vTaskSuspend(taskHandle);
 }
 // -----------------------------------------------------------------------------
-void WifiMQTT::loop(void) 
-{
-   task->fire_loop = true;
-}
-// -----------------------------------------------------------------------------
 bool WifiMQTT::subscribe(String& topic, int qos, unsigned int timeout_ms )
 {
     unsigned int start_millis = millis();
     unsigned int timeout = 50;
 
-    if (timeout_ms > 0)
-    timeout = timeout_ms;
-
+    if (timeout_ms > 0) timeout = timeout_ms;
 
     while (true)
     {
         if (millis() - start_millis > timeout)
             return (false);
 
-        //if (millis() - task->last_loop_millis  > 25)
-        if (xSemaphoreTake(task->xMutex,100/portTICK_PERIOD_MS))
+        if (xSemaphoreTake(task->xMutex,timeout_ms/portTICK_PERIOD_MS))
         {
-            _client->subscribe(topic,qos);
+            bool connected = task->mqtt_is_connected;  
+            if (connected) { _client->subscribe(topic,qos); }
             vTaskDelay(10/portTICK_PERIOD_MS);
             xSemaphoreGive(task->xMutex);
-            return (true);
+            if (connected) return (true);
         }
-        vTaskDelay(1/portTICK_PERIOD_MS);
-    } 
+        vTaskDelay(10/portTICK_PERIOD_MS);
+    }
 }
 // -----------------------------------------------------------------------------
 bool WifiMQTT::subscribe(const char* topic, int qos, unsigned int timeout_ms )
@@ -129,33 +112,26 @@ bool WifiMQTT::publish(String& topic, String& payload, bool retain, int qos, uns
     unsigned int start_millis = millis();
     unsigned int timeout = 50;
 
-    if (timeout_ms > 0)
-        timeout = timeout_ms;
-
-    
+    if (timeout_ms > 0) timeout = timeout_ms;
+   
     while (true)
     {
         if (millis() - start_millis > timeout)
             return (false);
 
-        // Serial.println(String (millis()));
-        // Serial.println(String (task->last_loop_millis));
-        // Serial.println(String ((millis() - task->last_loop_millis)));
-        // if (millis() - task->last_loop_millis  > 50)
-        if (xSemaphoreTake(task->xMutex,100/portTICK_PERIOD_MS))
+        if (xSemaphoreTake(task->xMutex,timeout_ms/portTICK_PERIOD_MS))
         {
-            if (_client->connected())
+            bool connected = task->mqtt_is_connected; 
+            if (connected)
             {
-                Serial.println("PUBLISH");
+                // Serial.println("PUBLISH");
                 _client->publish(topic,payload,retain,qos);
-                vTaskDelay(10/portTICK_PERIOD_MS);
-                xSemaphoreGive(task->xMutex);
-                return (true);
             }
+            vTaskDelay(10/portTICK_PERIOD_MS);
             xSemaphoreGive(task->xMutex);
-            return(false);
+            if (connected) return (true);
         }
-        vTaskDelay(1/portTICK_PERIOD_MS);
+        vTaskDelay(10/portTICK_PERIOD_MS);
     }
 }
 

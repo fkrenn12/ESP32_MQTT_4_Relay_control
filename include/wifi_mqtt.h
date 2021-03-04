@@ -8,7 +8,7 @@
 
 #define NTP_SERVER "de.pool.ntp.org"
 #define TZ_INFO "WEST-1DWEST-2,M3.5.0/02:00:00,M10.5.0/03:00:00" // Western European Time
-
+// #define PRINT_DETAILS 
 // -----------------------------------------------------------------------------
 class ConnectingTask
 // -----------------------------------------------------------------------------
@@ -22,39 +22,35 @@ class ConnectingTask
         WiFiClient*         _net_unsec;
         WiFiClientSecure*   _net_secure;
         String              _mqtt_connction_id;
-        
-       
-       
-
+        void                _mqtt_loop(void);
     public: 
-        String     _wifi_ssid;
-        String     _wifi_passwd;
-        String     _mqtt_hostname;
-        uint32_t   _mqtt_port;
-        String     _mqtt_user;
-        String     _mqtt_passwd;
-        bool       _mqtt_use_tls;
-        bool        fire_loop;
-        bool        wifi_is_connected;
-        bool        mqtt_is_connected;
-        bool        mqtt_is_secure;
-        void        (*onConnectptr)(void);
-        void        (*onDisconnectptr)(void);
-        unsigned long   last_loop_millis;
-        SemaphoreHandle_t xMutex;
+        String              _wifi_ssid;
+        String              _wifi_passwd;
+        String              _mqtt_hostname;
+        uint32_t            _mqtt_port;
+        String              _mqtt_user;
+        String              _mqtt_passwd;
+        bool                _mqtt_use_tls;
+        bool                wifi_is_connected;
+        bool                mqtt_is_connected;
+        bool                mqtt_is_secure;
+        void                (*onConnectptr)(void);
+        void                (*onDisconnectptr)(void);
 
+        SemaphoreHandle_t   xMutex;
+
+        
         static void run( void* pvParams )
         {
             ((ConnectingTask*)pvParams)->runInner();
         }
         void runInner()
         {
-            // we wait 3 seconds to let the setup() initialize
-            // all hardware drivers e.g. Serial
-            // it could also be done smarter with suspend/resume
-            //vTaskDelay(3000/portTICK_PERIOD_MS);
+            // we create this task suspended 
             vTaskSuspend(NULL);
+            #ifdef PRINT_DETAILS 
             Serial.println("Task CPU# " + String(xTaskGetAffinity(NULL)));
+            #endif
             while ( true )
             {      
                 // vTaskDelay(10/portTICK_PERIOD_MS); 
@@ -74,8 +70,10 @@ class ConnectingTask
                             WiFi.mode(WIFI_OFF);
                             vTaskDelay(50/portTICK_PERIOD_MS);
                             WiFi.mode(WIFI_STA);
-                            WiFi.enableSTA(true);  
+                            WiFi.enableSTA(true); 
+                            #ifdef PRINT_DETAILS  
                             Serial.println("WIFI:" + String(_wifi_ssid) + " " + String(_wifi_passwd));
+                            #endif
                             WiFi.begin(_wifi_ssid.c_str(),_wifi_passwd.c_str());                                   
                             vTaskDelay(500/portTICK_PERIOD_MS);
                             _wifi_status = 1;
@@ -118,8 +116,7 @@ class ConnectingTask
                             // Initial - Wait for WiFi connection
                             // ----------------------------------
                             _client->disconnect();
-                            _client->loop();
-                            vTaskDelay(10/portTICK_PERIOD_MS);
+                            _mqtt_loop();
                             mqtt_is_connected = false;
                             // wait for Wifi connection established
                             if (wifi_is_connected) _mqtt_status = 1;
@@ -127,8 +124,7 @@ class ConnectingTask
                     case 1: // ------------------------
                             // Resolving hostname to IP
                             // ------------------------
-                            _client->loop();
-                            vTaskDelay(10/portTICK_PERIOD_MS);
+                            _mqtt_loop();
                             if (WiFi.hostByName(_mqtt_hostname.c_str(), _mqtt_host_ip) == 1)
                                 _mqtt_status = 2;
                             else vTaskDelay(200/portTICK_PERIOD_MS);
@@ -137,15 +133,17 @@ class ConnectingTask
                     case 2: // --------------------
                             // Connecting to broker
                             // --------------------
+                            #ifdef PRINT_DETAILS 
                             Serial.println("MQTT-credentials: " + String(_mqtt_hostname) + ":" + String(_mqtt_port));
                             Serial.println("MQTT-credentials: " + String(_mqtt_user + " " + String(_mqtt_passwd + " " + String(_mqtt_use_tls))));
                             Serial.println("MQTT_ID:" + _mqtt_connction_id);
+                            #endif
                             if (_mqtt_use_tls)
                                 _client->begin(_mqtt_host_ip.toString().c_str(), (int)_mqtt_port, *_net_secure);
                             else
                                 _client->begin(_mqtt_host_ip.toString().c_str(), (int)_mqtt_port, *_net_unsec);
                             _mqtt_status = 3;
-                            _client->loop();
+                            //_mqtt_loop();
                             vTaskDelay(500/portTICK_PERIOD_MS);
                             break;
 
@@ -153,10 +151,10 @@ class ConnectingTask
                             // Wait for connection to broker
                             // -----------------------------
                             vTaskDelay(1000/portTICK_PERIOD_MS);
-                            _client->loop();
-                            vTaskDelay(10/portTICK_PERIOD_MS);
+                            _mqtt_loop();
                             if (_client->connect(_mqtt_connction_id.c_str(),_mqtt_user.c_str(),_mqtt_passwd.c_str()))
                             {
+                                vTaskDelay(10/portTICK_PERIOD_MS);
                                 _mqtt_status = 4;
                                 mqtt_is_connected = true;
                                 if (onConnectptr != NULL)
@@ -170,31 +168,25 @@ class ConnectingTask
 
                     case 4: // --------------------------------------
                             // Check connection to broker continously
-                            // --------------------------------------
-                            //if (fire_loop)
-                            if (true)
-                            { 
-                                if (xSemaphoreTake(xMutex,100/portTICK_PERIOD_MS))
+                            // -------------------------------------- 
+                                    
+                            if (xSemaphoreTake(xMutex,100/portTICK_PERIOD_MS))
+                            {
+                                if (!_client->connected())
                                 {
-                                    if (!_client->connected())
-                                    {
-                                        _mqtt_status = 0;
-                                        mqtt_is_connected = false;
-                                        if (onDisconnectptr != NULL)
-                                            (*onDisconnectptr)();
-                                    }
-                                    else
-                                    {
-                                        _client->loop(); 
-                                        last_loop_millis = millis(); 
-                                    }
-                                    fire_loop = false;
-                                    vTaskDelay(10/portTICK_PERIOD_MS);
-                                    xSemaphoreGive(xMutex);
+                                    _mqtt_status = 0;
+                                    mqtt_is_connected = false;
+                                    if (onDisconnectptr != NULL)
+                                        (*onDisconnectptr)();
                                 }
-                                break;
+                                else
+                                {
+                                    _client->loop(); 
+                                }
+                                vTaskDelay(10/portTICK_PERIOD_MS);
+                                xSemaphoreGive(xMutex);
                             }
-                            break; 
+                            break;
                     default: break;
                 }
                 vTaskDelay(10/portTICK_PERIOD_MS);
@@ -202,28 +194,11 @@ class ConnectingTask
         }
         // constructor
         ConnectingTask(MQTTClient*  client,
-                        /*
-                       String&      wifi_ssid, 
-                       String&      wifi_passwd, 
-                       String&      mqtt_hostname,
-                       uint32_t&    mqtt_port,
-                       String&      mqtt_user,
-                       String&      mqtt_passwd,
-                       bool         mqtt_use_tls,*/
                        WiFiClient*       net_unsec,
                        WiFiClientSecure* net_secure)
         {
             _wifi_status    = 0;
             _mqtt_status    = 0;
-            /*
-            _wifi_ssid      = wifi_ssid;
-            _wifi_passwd    = wifi_passwd;
-            _mqtt_hostname  = mqtt_hostname;
-            _mqtt_port      = mqtt_port;
-            _mqtt_user      = mqtt_user;
-            _mqtt_passwd    = mqtt_passwd;
-            _mqtt_use_tls   = mqtt_use_tls;
-            */
             _client         = client;
             _net_secure     = net_secure;
             _net_unsec      = net_unsec;
@@ -232,7 +207,7 @@ class ConnectingTask
             onConnectptr    = NULL;
             onDisconnectptr = NULL;
             xMutex = xSemaphoreCreateMutex();
-        }
+        }        
 };
 
 // -------------------------------------------------------------
@@ -246,16 +221,7 @@ class WifiMQTT
     MQTTClient*             _client;
     
    public:
-    WifiMQTT(   /*MQTTClient* client, 
-    
-                String     wifi_ssid, 
-                String     wifi_passwd, 
-                String     mqtt_hostname, 
-                uint32_t   mqtt_port,
-                String     mqtt_user,
-                String     mqtt_passwd,
-                bool       mqtt_use_tls */); // constructor
-
+    WifiMQTT(); // constructor
     bool wifi_is_connected();
     bool mqtt_is_connected(); 
     bool mqtt_is_secure();   
@@ -264,8 +230,7 @@ class WifiMQTT
     void onConnected(void (*funcptr)(void));  
     void onDisconnected(void (*funcptr)(void)); 
     void onMessage(void (*funcptr)(String&,String&));
-    void set_config(Config& config);
-    void loop(void);  
+    void set_config(Config& config);  
     bool publish(String& topic, String& payload, bool retain, int qos, unsigned int timeout_ms);
     bool publish(const char* topic, const char*  payload, bool retain, int qos, unsigned int timeout_ms);
     bool subscribe(String& topic, int qos, unsigned int timeout_ms );
