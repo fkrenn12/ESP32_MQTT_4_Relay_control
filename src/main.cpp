@@ -20,6 +20,7 @@
 #define led_mqtt                arduino_pin3
 #define force_config_portal_pin arduino_pin12
 
+
 // ------------> Time Server settings <------------------
 #define NTP_SERVER           "de.pool.ntp.org"
 #define TZ_INFO              "WEST-1DWEST-2,M3.5.0/02:00:00,M10.5.0/03:00:00" // Western European Time

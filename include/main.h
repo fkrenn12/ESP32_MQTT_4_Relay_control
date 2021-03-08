@@ -11,4 +11,5 @@
 #include <MQTTNode.h>
 #include <wifi_mqtt.h>
 #include <config.h>
+#include <relay.h>
 #endif
