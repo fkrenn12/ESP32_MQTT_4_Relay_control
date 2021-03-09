@@ -7,7 +7,6 @@ MQTTNode::MQTTNode(WifiMQTT* mqtt,const char* root, const char* manufactorer, co
 {
     uint64_t chipid = ESP.getEfuseMac(); //The chip ID is essentially its MAC address(length: 6 bytes).
     _mqtt = mqtt;
-    // _accessnumber = (uint16_t)(chipid>>32);
     _accessnumber = (uint32_t)(chipid);
     _accessnumber %= 100000;
     _accessnumber += 800000;
@@ -19,14 +18,14 @@ MQTTNode::MQTTNode(WifiMQTT* mqtt,const char* root, const char* manufactorer, co
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-void MQTTNode::handle_standard_commands(String topic, String payload)
+bool MQTTNode::handle_standard_commands(String topic, String payload)
 // ---------------------------------------------------------------------------------------------------------------------
 {
     if (topic.lastIndexOf("cmd/?") >= 0)
     {
         topic.replace("cmd/?","rep/");
         _mqtt->client->publish(topic + _devicefullname + "/accessnumber",String(_accessnumber));
-        return;
+        return(true);
     }
     if (is_message_for_this_device(topic))
     {
@@ -35,7 +34,7 @@ void MQTTNode::handle_standard_commands(String topic, String payload)
         {
             topic.replace("cmd","rep");
             _mqtt->client->publish(topic,payload);
-            return;
+            return(true);
         }
         else if (topic.lastIndexOf("/?") >= 0)
         {
@@ -57,9 +56,10 @@ void MQTTNode::handle_standard_commands(String topic, String payload)
             _mqtt->client->publish(new_topic,_model);
             new_topic = topic + "devicetype";
             _mqtt->client->publish(new_topic,_devicetype);
-            return;
+            return(true);
         }
     }
+    return(false);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

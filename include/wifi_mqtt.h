@@ -56,12 +56,6 @@ class ConnectingTask
             #endif
             while ( true )
             {      
-                // vTaskDelay(10/portTICK_PERIOD_MS); 
-                // Serial.print("A");
-                // _client->loop();
-                // Serial.println("B");
-                // Serial.println("Wifi-Task #" + String(_wifi_status));
-                // Serial.println("MQTT-Task #" + String(_mqtt_status));
                 switch (_wifi_status)
                 {
                     case 0: // ----------------------------------
@@ -111,8 +105,6 @@ class ConnectingTask
                     vTaskSwitchContext();                 
                 }
 
-                if (!wifi_is_connected) _mqtt_status = 0;
-
                 switch (_mqtt_status)
                 {
                     case 0: // ----------------------------------
@@ -127,6 +119,7 @@ class ConnectingTask
                     case 1: // ------------------------
                             // Resolving hostname to IP
                             // ------------------------
+                            if (!wifi_is_connected) {_mqtt_status = 0;break;}
                             _mqtt_loop();
                             if (WiFi.hostByName(_mqtt_hostname.c_str(), _mqtt_host_ip) == 1)
                                 _mqtt_status = 2;
@@ -141,6 +134,7 @@ class ConnectingTask
                             Serial.println("MQTT-credentials: " + String(_mqtt_user + " " + String(_mqtt_passwd + " " + String(_mqtt_use_tls))));
                             Serial.println("MQTT_ID:" + _mqtt_connction_id);
                             #endif
+                            if (!wifi_is_connected) {_mqtt_status = 0;break;}
                             if (_mqtt_use_tls)
                                 _client->begin(_mqtt_host_ip.toString().c_str(), (int)_mqtt_port, *_net_secure);
                             else
@@ -154,6 +148,7 @@ class ConnectingTask
                             // Wait for connection to broker
                             // -----------------------------
                             vTaskDelay(1000/portTICK_PERIOD_MS);
+                            if (!wifi_is_connected) {_mqtt_status = 0;break;}
                             _mqtt_loop();
                             if (_client->connect(_mqtt_connction_id.c_str(),_mqtt_user.c_str(),_mqtt_passwd.c_str()))
                             {
@@ -175,7 +170,7 @@ class ConnectingTask
                                     
                             if (xSemaphoreTake(xMutex,100/portTICK_PERIOD_MS))
                             {
-                                if (!_client->connected())
+                                if (!_client->connected() || !wifi_is_connected)
                                 {
                                     _mqtt_status = 0;
                                     mqtt_is_connected = false;

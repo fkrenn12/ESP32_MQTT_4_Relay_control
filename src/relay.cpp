@@ -1,26 +1,63 @@
 #include <relay.h>
 
-void handle_message(String &topic, String &payload) 
-//-------------------------------------------------------------------
+//-------------------
+Relay4::Relay4(void)
+//-------------------
 {
-  static uint64_t relais_1_last_switch_time = 0;
-  static uint64_t relais_2_last_switch_time = 0;
-  static uint64_t relais_3_last_switch_time = 0;
-  static uint64_t relais_4_last_switch_time = 0;
+    // configre relay pins
+    pinMode(relay1, OUTPUT); 
+    pinMode(relay2, OUTPUT);
+    pinMode(relay3, OUTPUT);
+    pinMode(relay4, OUTPUT);
+    
+    relais_1_last_switch_time = 0;
+    relais_2_last_switch_time = 0;
+    relais_3_last_switch_time = 0;
+    relais_4_last_switch_time = 0;
+}
 
-  bool next_relais_1_status;
-  bool next_relais_2_status;
-  bool next_relais_3_status;
-  bool next_relais_4_status;
+//--------------------------------------------------------------------------------------------
+void Relay4::begin(void)
+//--------------------------------------------------------------------------------------------
+{
+    uint8_t eeprom_data = EEPROM.readChar(eeprom_addr_relay_state);
+    digitalWrite(relay1,(uint8_t)(eeprom_data == 0xa1));
+    eeprom_data = EEPROM.readChar(eeprom_addr_relay_state + 1);
+    digitalWrite(relay2,(uint8_t)(eeprom_data == 0xa3));
+    eeprom_data = EEPROM.readChar(eeprom_addr_relay_state + 2);
+    digitalWrite(relay3,(uint8_t)(eeprom_data == 0xa5));
+    eeprom_data = EEPROM.readChar(eeprom_addr_relay_state + 3);
+    digitalWrite(relay4,(uint8_t)(eeprom_data == 0xa9));
+    delay(10);
+    next_relais_1_status = (bool)digitalRead(relay1);
+    next_relais_2_status = (bool)digitalRead(relay2);
+    next_relais_3_status = (bool)digitalRead(relay3);
+    next_relais_4_status = (bool)digitalRead(relay4);
+}
 
-  boolean need_commit = false;
-  int need_publish_status = 0;
-  // Printing out received data on serial port
-  Serial.print("Received [");
-  Serial.print(topic);
-  Serial.print("] ");
-  Serial.println(payload);
-  bool handled = false;
+//--------------------------------------------------------------------------------------------
+void Relay4::handle_message(WifiMQTT* mqtt, int accessnumber, String &topic, String &payload) 
+//--------------------------------------------------------------------------------------------
+{
+  bool next_relais_1_status = digitalRead(relay1);
+  bool next_relais_2_status = digitalRead(relay2);
+  bool next_relais_3_status = digitalRead(relay3);
+  bool next_relais_4_status = digitalRead(relay4);
+
+
+  int   need_publish_status   = 0;
+  bool  handled               = false;
+  bool  need_commit           = false;
+
+  // without "cmd" it is not a valid command
+  if (topic.lastIndexOf("cmd") < 0 ) return;
+
+  String topic_modified    = topic;
+  topic_modified.replace("cmd","rep");
+
+  // Serial.println("TOPIC: " + topic);
+  // Serial.println("TOPIC_MODIFIED: " + topic_modified);
+
   if (topic.lastIndexOf("rel/0?") >= 0)
   {
     need_publish_status = 1;
@@ -28,22 +65,22 @@ void handle_message(String &topic, String &payload)
   }
   else if (topic.lastIndexOf("rel/1?") >= 0)
   {
-    client.publish(topic,String(digitalRead(relay1)));
+    mqtt->client->publish(topic_modified,String(digitalRead(relay1)));
     return;
   }
   else if (topic.lastIndexOf("rel/2?") >= 0)
   {
-    client.publish(topic,String(digitalRead(relay2)));
+    mqtt->client->publish(topic_modified,String(digitalRead(relay2)));
     return;
   }
   else if (topic.lastIndexOf("rel/3?") >= 0)
   {
-    client.publish(topic,String(digitalRead(relay3)));
+    mqtt->client->publish(topic_modified,String(digitalRead(relay3)));
     return;
   }
   else if (topic.lastIndexOf("rel/4?") >= 0)
   {
-    client.publish(topic,String(digitalRead(relay4)));
+    mqtt->client->publish(topic_modified,String(digitalRead(relay4)));
     return;
   }
   // hier gehts los
@@ -179,32 +216,34 @@ void handle_message(String &topic, String &payload)
   {
       //Serial.println("HANDLED");
       Serial.println(topic);
-      client.publish(topic,"ACCEPTED");
+      mqtt->client->publish(topic_modified,"ACCEPTED");
       need_publish_status = 1;
   }
   else
   {
       //Serial.println("NOT HANDLED");
-      client.publish(topic,"ERROR");
+      mqtt->client->publish(topic_modified,"ERROR");
       return;
   }
 
   if (need_publish_status || need_commit)
   {
-    need_publish_status = 0;
     // String topic    = topic_root + "rep/" + String(accessnumber);
-    String topic    = topic_last_received;
-    if (topic != "")
+    
+    if (topic_modified != "")
     {
-      int index = topic.lastIndexOf("/rep/") + 5;
-      topic = topic.substring(0,index) + String(accessnumber);
-      // Serial.println("TEST: " + topic);
+      // we do not need the command itself anymore for replying the status
+      // so after rep we cut the string and readd the accessnumber 
+      String rep = "/rep/";
+      int index       = topic_modified.lastIndexOf(rep) + rep.length();
+      topic_modified  = topic_modified.substring(0,index) + String(accessnumber);
+      
       String payload  = "{'status':{'rel':{'1':'{{REL1}}', '2':'{{REL2}}', '3':'{{REL3}}', '4':'{{REL4}}'}}}";
       payload.replace("{{REL1}}", String(digitalRead(relay1)));
       payload.replace("{{REL2}}", String(digitalRead(relay2)));
       payload.replace("{{REL3}}", String(digitalRead(relay3)));
       payload.replace("{{REL4}}", String(digitalRead(relay4)));
-      client.publish(topic, payload); 
+      mqtt->client->publish(topic_modified, payload); 
     }
   }
 }

@@ -17,7 +17,7 @@ class MQTTNode
 
    public:
         MQTTNode(WifiMQTT* mqtt, const char* root, const char* manufactorer, const char* model, const char* devicetype, const char* version); // constructor
-        void handle_standard_commands(String topic, String payload);    
+        bool handle_standard_commands(String topic, String payload);    
         bool is_message_for_this_device(String topic);
         void set_root(String root);
         void set_commandlist(String commandlist);

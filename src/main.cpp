@@ -28,7 +28,7 @@
 Config    config;
 WifiMQTT  mqtt;
 MQTTNode  node(&mqtt, NODE_ROOT , NODE_MANUFACTORER, NODE_MODELNAME, NODE_DEVICETYPE, NODE_VERSION );
-
+Relay4    relays;
 // prototypes
 void mqtt_message(String &topic, String &payload);
 void mqtt_disconnected(void);
@@ -54,15 +54,16 @@ void mqtt_message(String &topic, String &payload)
   struct tm local;
   getLocalTime(&local);      
   String time = String(local.tm_hour) + ":" + String(local.tm_min) + ":" + String(local.tm_sec);
-  Serial.println(time + " Received: " + topic + " " + payload);
+  Serial.println(time + " Received: " + "[" + topic + "] " + payload);
   
-  node.handle_standard_commands(topic, payload);
-  if (node.is_message_for_this_device(topic)) 
+  if (!node.handle_standard_commands(topic, payload) && node.is_message_for_this_device(topic))
+  //if (node.is_message_for_this_device(topic)) 
   {
     /*
     Code to pass on 
     */ 
-    Serial.println(" OHH, message for me!!");
+    relays.handle_message(&mqtt,node.get_accessnumber(),topic, payload);
+    // Serial.println(" OHH, message for me!!");
   }
 }
 
@@ -70,12 +71,14 @@ void mqtt_message(String &topic, String &payload)
 void setup() 
 //--------------------------------------------
 {   
+    EEPROM.begin(4); // Relay4 need some eeprom to store status of relays
     // pin configuration 
     pinMode(led_wifi, OUTPUT);
     pinMode(led_mqtt, OUTPUT);
     pinMode(force_config_portal_pin,INPUT_PULLUP);
     digitalWrite(led_wifi, 0);
     digitalWrite(led_mqtt, 0);
+    
     // serial configuration
     Serial.begin(BAUDRATE,SERIAL_8N1);
     Serial.setDebugOutput(true);
@@ -101,7 +104,7 @@ void setup()
       delay(1000);
     };
   
-    // start portal if pin was low and load configuration 
+    // start portal if pin was low and afterwords load configuration 
     if (needConfigPortal) 
     {
       config.portal(config,node.get_accessnumber());
@@ -110,6 +113,7 @@ void setup()
     }
     config.load(config);
 
+    relays.begin();
     // MQTT Broker connection start
     mqtt.config(config);
     mqtt.onConnected(mqtt_connected);
@@ -119,7 +123,8 @@ void setup()
     
     // node configuration
     node.set_root(config.mqtt_root);
-    node.set_commandlist("[]");   
+    node.set_commandlist("['rel/0','rel/1','rel/2','rel/3','rel/4',\
+                           'rel/0?','rel/1?','rel/2?','rel/3?','rel/4?']");   
 }
 
 //--------------------------------------------
