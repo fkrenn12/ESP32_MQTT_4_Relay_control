@@ -137,10 +137,12 @@ void loop()
   {
     old_millis = millis();
     { 
-      String topic = NODE_ROOT;
-      topic.concat("/1/1/cmd/test");
-      String payload = "0123456789";  
-      mqtt.publish(topic,payload,false,0,100);
+      // String topic = NODE_ROOT;
+      // topic.concat("/1/1/cmd/test");
+      // String payload = "0123456789";  
+      // mqtt.publish(topic,payload,false,0,100);
+      digitalWrite(led_mqtt,mqtt.mqtt_is_connected());
+      digitalWrite(led_wifi,mqtt.wifi_is_connected());
     }
   }
 }
