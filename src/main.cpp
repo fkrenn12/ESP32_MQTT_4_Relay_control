@@ -14,42 +14,43 @@
 
 #define FORCE_CONFIG_PORTAL   0
 #define BAUDRATE              9600
-   
-
+  
 #define led_wifi                arduino_pin2
 #define led_mqtt                arduino_pin3
 #define force_config_portal_pin arduino_pin12
-
-
-// ------------> Time Server settings <------------------
+// ---------------------------------------------------------------------------------------------------
+// Time Server settings 
+// ---------------------------------------------------------------------------------------------------
 #define NTP_SERVER           "de.pool.ntp.org"
 #define TZ_INFO              "WEST-1DWEST-2,M3.5.0/02:00:00,M10.5.0/03:00:00" // Western European Time
-// -------------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------------------
 Config    config;
 WifiMQTT  mqtt;
 MQTTNode  node(&mqtt, NODE_ROOT , NODE_MANUFACTORER, NODE_MODELNAME, NODE_DEVICETYPE, NODE_VERSION );
 Relay4    relays;
+// ---------------------------------------------------------------------------------------------------
 // prototypes
+// ---------------------------------------------------------------------------------------------------
 void mqtt_message(String &topic, String &payload);
 void mqtt_disconnected(void);
 void mqtt_connected(void);
 
-//-------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------------------
 void mqtt_disconnected()
-//-------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------------------
 {
     Serial.println("*** DISONNECTED ***");
 }
-//-------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------------------
 void mqtt_connected()
-//-------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------------------
 {
     Serial.println("*** CONNECTED *** ");
     node.subscribe();
 }
-//-------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------------------
 void mqtt_message(String &topic, String &payload) 
-//-------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------------------
 { 
   struct tm local;
   getLocalTime(&local);      
@@ -57,32 +58,30 @@ void mqtt_message(String &topic, String &payload)
   Serial.println(time + " Received: " + "[" + topic + "] " + payload);
   
   if (!node.handle_standard_commands(topic, payload) && node.is_message_for_this_device(topic))
-  //if (node.is_message_for_this_device(topic)) 
   {
-    /*
-    Code to pass on 
-    */ 
+    // Code to pass on 
     relays.handle_message(&mqtt,node.get_accessnumber(),topic, payload);
-    // Serial.println(" OHH, message for me!!");
   }
 }
 
-//--------------------------------------------
+// ---------------------------------------------------------------------------------------------------
 void setup() 
-//--------------------------------------------
+// ---------------------------------------------------------------------------------------------------
 {   
-    EEPROM.begin(4); // Relay4 need some eeprom to store status of relays
+    EEPROM.begin(4);  // Relay4 need some eeprom locations to store status of relays
+
     // pin configuration 
     pinMode(led_wifi, OUTPUT);
     pinMode(led_mqtt, OUTPUT);
     pinMode(force_config_portal_pin,INPUT_PULLUP);
     digitalWrite(led_wifi, 0);
     digitalWrite(led_mqtt, 0);
-    
+
     // serial configuration
     Serial.begin(BAUDRATE,SERIAL_8N1);
     Serial.setDebugOutput(true);
     Serial.setDebugOutput(false);  // stop debug output on serial
+
     // welcome 
     Serial.println("\n*** STARTUP after RESET ***");
     Serial.println("CHIPID: " + config.chipid);
@@ -95,7 +94,7 @@ void setup()
     if (!config.initialize()) ESP.restart();  // without the file system nothing will work
     if (!config.exist())    config.create();  // create initial configuration file
     if (!config.exist())      ESP.restart();  // without config file nothing will work too
-       
+
     // reading the input pin to force the wifi portal
     bool needConfigPortal= !(bool)digitalRead(force_config_portal_pin);
     while(!(bool)digitalRead(force_config_portal_pin))
@@ -104,9 +103,10 @@ void setup()
       delay(1000);
     };
   
-    // start portal if pin was low and afterwords load configuration 
+    // start portal if pin was low and afterwords load the configuration 
     if (needConfigPortal) 
     {
+      config.load(config);
       config.portal(config,node.get_accessnumber());
       config.printout(config);
       config.store(config);
@@ -127,9 +127,9 @@ void setup()
                            'rel/0?','rel/1?','rel/2?','rel/3?','rel/4?']");   
 }
 
-//--------------------------------------------
+// ---------------------------------------------------------------------------------------------------
 void loop() 
-//--------------------------------------------
+// ---------------------------------------------------------------------------------------------------
 {     
   static uint32_t old_millis = millis();
   
@@ -137,12 +137,9 @@ void loop()
   {
     old_millis = millis();
     { 
-      // String topic = NODE_ROOT;
-      // topic.concat("/1/1/cmd/test");
-      // String payload = "0123456789";  
-      // mqtt.publish(topic,payload,false,0,100);
       digitalWrite(led_mqtt,mqtt.mqtt_is_connected());
       digitalWrite(led_wifi,mqtt.wifi_is_connected());
+      delay(1000);
     }
   }
 }
