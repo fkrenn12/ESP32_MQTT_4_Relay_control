@@ -105,7 +105,7 @@ void setup()
       config.store(config);
     }
     config.load(config);
-
+    relays.begin(4);
     // MQTT Broker connection start
     mqtt.config(config);
     mqtt.onConnected(mqtt_connected);

@@ -29,6 +29,6 @@ class Relay4
    public:
         Relay4(void); // constructor
         void handle_message(WifiMQTT* mqtt, int accessnumber, String &topic, String &payload);
-        void begin(void);
+        void begin(int);
 };
 #endif

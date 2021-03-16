@@ -17,9 +17,10 @@ Relay4::Relay4(void)
 }
 
 //--------------------------------------------------------------------------------------------
-void Relay4::begin(void)
+void Relay4::begin(int count)
 //--------------------------------------------------------------------------------------------
 {
+    EEPROM.begin(count);
     uint8_t eeprom_data = EEPROM.readChar(eeprom_addr_relay_state);
     digitalWrite(relay1,(uint8_t)(eeprom_data == 0xa1));
     eeprom_data = EEPROM.readChar(eeprom_addr_relay_state + 1);
