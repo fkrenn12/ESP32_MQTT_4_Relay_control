@@ -18,8 +18,8 @@
 String  ssid            = "LAWIG14";        //Enter SSID
 String  password        = "wiesengrund14";  //Enter Password
 /*
-const char  ssid[]      = "LAWIG14"; //Enter SSID
-const char  password[]  = "wiesengrund14"; //Enter Password
+const char  ssid[]      = "LA4"; //Enter SSID
+const char  password[]  = "w4"; //Enter Password
 */
 // --------> MQTT-Broker settings <---------------
 /*
@@ -28,8 +28,8 @@ const char mqttUser[]   = "labor";
 const char mqttPass[]   = "labor"; 
 */
 String mqttIP           = "91.132.147.143"; 
-String mqttUser         = "franz";
-String mqttPass         = "FK_s10rr6fr"; 
+String mqttUser         = "user";
+String mqttPass         = "üassr"; 
 int mqttPort            = 1883;
 // -----------------------------------------
 // global
