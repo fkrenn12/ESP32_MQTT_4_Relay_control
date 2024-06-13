@@ -15,11 +15,11 @@
 #define AA_FONT_LARGE "NotoSansBold36"
 #define BAUDRATE 250000
 // ------------> Wifi settings <------------------
-String  ssid            = "LAWIG14";        //Enter SSID
-String  password        = "wiesengrund14";  //Enter Password
+String  ssid            = "SSID";        //Enter SSID
+String  password        = "pass";  //Enter Password
 /*
-const char  ssid[]      = "LAWIG14"; //Enter SSID
-const char  password[]  = "wiesengrund14"; //Enter Password
+const char  ssid[]      = "SSID"; //Enter SSID
+const char  password[]  = "pass"; //Enter Password
 */
 // --------> MQTT-Broker settings <---------------
 /*
@@ -28,8 +28,8 @@ const char mqttUser[]   = "labor";
 const char mqttPass[]   = "labor"; 
 */
 String mqttIP           = "91.132.147.143"; 
-String mqttUser         = "franz";
-String mqttPass         = "FK_s10rr6fr"; 
+String mqttUser         = "user";
+String mqttPass         = "pass"; 
 int mqttPort            = 1883;
 // -----------------------------------------
 // global
